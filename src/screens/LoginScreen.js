@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase.js";
 import { collection, getDocs } from "firebase/firestore";
+import { commonStyles as styles } from "../styles/Style.js";
 
 export default function LoginScreen() {
     const [nome, setNome] = useState("");
@@ -79,12 +80,3 @@ export default function LoginScreen() {
         </div>
     );
 }
-
-const styles = {
-    container: { maxWidth: "400px", margin: "50px auto", padding: "20px", border: "1px solid #ccc", borderRadius: "10px", textAlign: "center" },
-    title: { marginBottom: "20px" },
-    form: { display: "flex", flexDirection: "column" },
-    input: { padding: "10px", marginBottom: "15px", borderRadius: "5px", border: "1px solid #ccc" },
-    button: { padding: "10px", borderRadius: "5px", border: "none", backgroundColor: "#007bff", color: "white", fontWeight: "bold", cursor: "pointer" },
-    error: { color: "red", marginTop: "10px" }
-};
