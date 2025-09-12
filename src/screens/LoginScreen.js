@@ -30,8 +30,9 @@ export default function LoginScreen() {
 
             querySnapshot.docs.forEach(doc => console.log("Documento:", doc.id, doc.data()));
 
-            const studentDoc = querySnapshot.docs.find(doc => {
+            const userDoc = querySnapshot.docs.find(doc => {
                 const data = doc.data();
+                console.log("Comparing data:", data, "with input:", nome, cognome);
                 return (
                     data.nome && data.cognome &&
                     data.nome.trim().toLowerCase() === nome.trim().toLowerCase() &&
@@ -39,10 +40,11 @@ export default function LoginScreen() {
                 );
             });
 
-            if (studentDoc) {
-                const studentData = studentDoc.data();
-                console.log("Login riuscito:", studentData);
-                navigate("/home", { state: { student: studentData } });
+            if (userDoc) {
+                const userData = userDoc.data();
+                // Passa anche l'ID del documento Firestore come userId
+                console.log("Login riuscito:", userData);
+                navigate("/home", { state: { user: { ...userData, id: userDoc.id } } });
             } else {
                 console.warn("Nessun documento corrispondente trovato per input:", nome, cognome);
                 setError("Nome o cognome non valido");
@@ -74,7 +76,7 @@ export default function LoginScreen() {
                     style={styles.input}
                     required
                 />
-                <button type="submit" style={styles.button}>Accedi</button>
+                <button type="submit" style={styles.buttonPrimary}>Accedi</button>
             </form>
             {error && <p style={styles.error}>{error}</p>}
         </div>

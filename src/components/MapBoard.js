@@ -1,72 +1,127 @@
 import React, { useState, useEffect } from "react";
+import { mapStyles } from "../styles/Style.js";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "../firebase"; // Assumendo che l'istanza di Firestore sia esportata da qui
 
-export default function MapBoard() {
+export default function MapBoard({ userId }) {
     const totalCells = 25;
 
-    // Leggi la posizione salvata su localStorage oppure usa 0
-    const savedPosition = parseInt(localStorage.getItem("currentPosition"), 10) || 0;
-    const [currentPosition, setCurrentPosition] = useState(savedPosition);
+    const [currentPosition, setCurrentPosition] = useState(0);
+    const [cellStatus, setCellStatus] = useState(Array(totalCells).fill(null));
+    const [loading, setLoading] = useState(true);
+    const [errorMessage, setErrorMessage] = useState(null);
+
+    useEffect(() => {
+        if (!userId) {
+            setErrorMessage("Nessun utente selezionato. Per favore, effettua il login o seleziona un utente.");
+            setLoading(false);
+            return;
+        }
+
+        const loadData = async () => {
+            try {
+                const docRef = doc(db, "spiazzati", userId);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    setCurrentPosition(typeof data.currentPosition === "number" ? data.currentPosition : 0);
+                    setCellStatus(Array.isArray(data.cellStatus) && data.cellStatus.length === totalCells ? data.cellStatus : Array(totalCells).fill(null));
+                    setErrorMessage(null);
+                } else {
+                    setCurrentPosition(0);
+                    setCellStatus(Array(totalCells).fill(null));
+                    setErrorMessage("Nessun dato trovato per l'utente selezionato.");
+                }
+            } catch (error) {
+                console.error("Errore nel caricamento dati Firestore:", error);
+                setCurrentPosition(0);
+                setCellStatus(Array(totalCells).fill(null));
+                setErrorMessage("Errore durante il caricamento dei dati. Riprova più tardi.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadData();
+    }, [userId]);
+
+    const saveData = async (newPosition, newCellStatus) => {
+        if (!userId) return;
+        try {
+            const docRef = doc(db, "spiazzati", userId);
+            await setDoc(
+                docRef,
+                {
+                    currentPosition: newPosition,
+                    cellStatus: newCellStatus,
+                },
+                { merge: true }
+            );
+        } catch (error) {
+            console.error("Errore nel salvataggio dati Firestore:", error);
+        }
+    };
 
     const handleCellClick = (index) => {
         if (index === currentPosition + 1) {
-            const confirmMove = window.confirm(`Vuoi spostarti alla casella ${index + 1}?`);
-            if (confirmMove) {
-                setCurrentPosition(index);
-                localStorage.setItem("currentPosition", index); // salva la posizione
+            const confirmParticipation = window.confirm("Hai partecipato all'incontro?");
+            const newCellStatus = [...cellStatus];
+            if (confirmParticipation) {
+                newCellStatus[index] = "yes";
+            } else {
+                newCellStatus[index] = "no";
             }
+            setCellStatus(newCellStatus);
+            setCurrentPosition(index);
+            saveData(index, newCellStatus);
         } else {
             alert("Devi seguire l'ordine delle caselle!");
         }
     };
 
+    if (loading) {
+        return <div>Caricamento...</div>;
+    }
+
+    if (errorMessage) {
+        return <div>{errorMessage}</div>;
+    }
+
     return (
-        <div style={styles.container}>
-            <div style={styles.board}>
-                {Array.from({ length: totalCells }).map((_, index) => (
-                    <div
-                        key={index}
-                        style={{
-                            ...styles.cell,
-                            backgroundColor: index === currentPosition ? "#8B4513" : "#FFF8DC",
-                            border: index === currentPosition ? "3px solid #DAA520" : "2px solid #654321",
-                        }}
-                        onClick={() => handleCellClick(index)}
-                    >
-                        {index + 1}
-                    </div>
-                ))}
+        <div style={mapStyles.container}>
+            <div style={mapStyles.board}>
+                {Array.from({ length: totalCells }).map((_, index) => {
+                    let backgroundColor;
+                    let border;
+                    if (cellStatus[index] === "yes") {
+                        backgroundColor = "#90EE90";
+                        border = "3px solid green";
+                    } else if (cellStatus[index] === "no") {
+                        backgroundColor = "#F08080";
+                        border = "3px solid red";
+                    } else {
+                        backgroundColor = index === currentPosition ? "#8B4513" : "#FFF8DC";
+                        border = index === currentPosition ? "3px solid #DAA520" : "2px solid #654321";
+                    }
+                    const cols = 4; // numero di colonne
+                    const row = Math.floor(index / cols);
+                    const colInRow = index % cols;
+                    const displayNumber = row % 2 === 0 ? index + 1 : row * cols + (cols - colInRow);
+                    return (
+                        <div
+                            key={index}
+                            style={{
+                                ...mapStyles.cell,
+                                backgroundColor,
+                                border,
+                            }}
+                            onClick={() => handleCellClick(index)}
+                        >
+                            {displayNumber}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
 }
-
-const styles = {
-    container: {
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        width: "100%",
-        marginTop: 30,
-    },
-    board: {
-        display: "grid",
-        gridTemplateColumns: "repeat(5, 60px)",
-        gridAutoRows: "60px",
-        gap: "15px",
-        justifyContent: "center",
-    },
-    cell: {
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        borderRadius: "50%",
-        cursor: "pointer",
-        fontFamily: "'Cinzel', serif",
-        fontWeight: "bold",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
-        fontSize: "1rem",
-        userSelect: "none",
-        transition: "all 0.2s ease",
-        textAlign: "center",
-    },
-};

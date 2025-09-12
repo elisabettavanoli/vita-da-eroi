@@ -7,15 +7,16 @@ import MapBoard from "../components/MapBoard";
 export default function HomeScreen() {
     const navigate = useNavigate();
     const location = useLocation();
-    const student = location.state?.student;
+    const user = location.state?.user;
+    console.log("User data:", user);
 
     const handleLogout = () => navigate("/");
 
     return (
         <div style={styles.container}>
-            <h1 style={styles.title}>Benvenuto, {student?.nome}!</h1>
+            <h1 style={styles.title}>Benvenuto, {user?.nome}!</h1>
             {/* Mappa interattiva */}
-            <MapBoard />
+            <MapBoard userId={user?.id}/>
             <button onClick={handleLogout} style={styles.buttonPrimary}>Logout</button>
         </div>
     );

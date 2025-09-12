@@ -45,8 +45,13 @@ async function uploadRagazzi() {
     const collectionRef = db.collection("spiazzati");
 
     for (const ragazzo of ragazzi) {
+        const dataToUpload = {
+            nome: ragazzo.nome,
+            cognome: ragazzo.cognome,
+            mapStatus: Array(25).fill(null)
+        };
         const docRef = collectionRef.doc(); // ID automatico
-        await docRef.set(ragazzo);
+        await docRef.set(dataToUpload);
         console.log(`Aggiunto: ${ragazzo.nome} ${ragazzo.cognome}`);
     }
 

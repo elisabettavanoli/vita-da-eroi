@@ -86,3 +86,35 @@ export const commonStyles = {
         fontFamily: "'Cinzel', serif",
     },
 };
+
+export const mapStyles = {
+    container: {
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        width: "100%",
+        marginBottom: 20,
+    },
+    board: {
+        display: "grid",
+        gridTemplateColumns: "repeat(4, minmax(60px, 1fr))",
+        gridAutoRows: "minmax(60px, 1fr)",
+        maxWidth: "100%",
+        gap: "15px",
+        justifyContent: "center",
+    },
+    cell: {
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        borderRadius: "50%",
+        cursor: "pointer",
+        fontFamily: "'Cinzel', serif",
+        fontWeight: "bold",
+        boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
+        fontSize: "1rem",
+        userSelect: "none",
+        transition: "all 0.2s ease",
+        textAlign: "center",
+    },
+};
