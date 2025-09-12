@@ -6,7 +6,8 @@ const colors = {
     danger: "#B22222",        // rosso scuro
     border: "#654321",        // marrone scuro
     background: "#F5DEB3",    // colore pergamena
-    text: "#3E2723",           // marrone scuro per il testo
+    text: "#3E2723",
+    green: "#00af0b"// marrone scuro per il testo
 };
 
 const spacing = {
@@ -69,6 +70,7 @@ export const commonStyles = {
         boxShadow: "0 3px 6px rgba(0,0,0,0.3)",
         transition: "all 0.2s ease",
         width: "fit-content",
+        marginBottom: 20,
     },
     buttonPrimaryHover: {
         backgroundColor: colors.secondary,
@@ -93,6 +95,8 @@ export const commonStyles = {
         fontSize: "0.95rem",
         fontFamily: "'Cinzel', serif",
     },
+
+
 };
 
 export const mapStyles = {
@@ -129,5 +133,114 @@ export const mapStyles = {
         textAlign: "center",
         position: "relative",   // Added to allow absolute positioning of knight image
 
+    },
+
+    modalOverlay: {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 1000,
+    },
+    modalContent: {
+        backgroundColor: colors.background,
+        padding: 30,
+        borderRadius: 15,
+        border: `3px solid ${colors.border}`,
+        boxShadow: "0 0 15px rgba(0,0,0,0.5)",
+        fontFamily: "'Cinzel', serif",
+        textAlign: "center",
+        maxWidth: "400px",
+        width: "90%",
+    },
+    modalButtonContainer: {
+        marginTop: 25,
+        display: "flex",
+        justifyContent: "space-around",
+    },
+    modalButtonYes: {
+        padding: spacing.medium,
+        borderRadius: 10,
+        border: `2px solid ${colors.border}`,
+        backgroundColor: colors.green,
+        color: colors.background,
+        fontWeight: "bold",
+        fontSize: "1.1rem",
+        cursor: "pointer",
+        fontFamily: "'Cinzel', serif",
+        boxShadow: "0 3px 6px rgba(0,0,0,0.3)",
+        transition: "all 0.2s ease",
+        width: "120px",
+    },
+    modalButtonNo: {
+        padding: spacing.medium,
+        borderRadius: 10,
+        border: `2px solid ${colors.border}`,
+        backgroundColor: colors.danger,
+        color: colors.background,
+        fontWeight: "bold",
+        fontSize: "1.1rem",
+        cursor: "pointer",
+        fontFamily: "'Cinzel', serif",
+        boxShadow: "0 3px 6px rgba(0,0,0,0.3)",
+        transition: "all 0.2s ease",
+        width: "120px",
+    },
+    modalKnightAbove: {
+        position: "absolute",
+        top: "-10px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: "40px",
+        height: "40px",
+        zIndex: 10,
+        pointerEvents: "none",
+    },
+
+    knightAboveContainer: {
+        display: "flex",
+        justifyContent: "center",
+        marginBottom: 10,
+    },
+
+    resetButton: {
+        display: "block",
+        margin: "10px auto",
+        padding: "8px 16px",
+        fontSize: "16px",
+        cursor: "pointer",
+        borderRadius: 10,
+        border: `2px solid ${colors.border}`,
+        backgroundColor: colors.secondary,
+        color: colors.text,
+        fontWeight: "bold",
+        fontFamily: "'Cinzel', serif",
+        boxShadow: "0 3px 6px rgba(0,0,0,0.3)",
+        transition: "all 0.2s ease",
+    },
+
+    cellContent: {
+        position: "relative",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        cursor: "pointer",
+    },
+
+    cellKnight: {
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        maxWidth: "60%",
+        maxHeight: "60%",
+        objectFit: "contain",
+        pointerEvents: "none",
+        userSelect: "none",
     },
 }

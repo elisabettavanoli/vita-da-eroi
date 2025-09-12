@@ -151,8 +151,8 @@ export default function MapBoard({ userId, readonly = false }) {
     return (
         <div style={mapStyles.container}>
             {isFirstMove && !readonly && (
-                <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
-                    <img src={cavaliereImg} alt="Cavaliere" style={{ maxWidth: "80px", maxHeight: "80px", objectFit: "contain" }} />
+                <div style={mapStyles.knightAboveContainer}>
+                    <img src={cavaliereImg} alt="Cavaliere" style={mapStyles.cellKnight} />
                 </div>
             )}
             <div style={boardStyle}>
@@ -190,50 +190,23 @@ export default function MapBoard({ userId, readonly = false }) {
                                 <img
                                     src={cavaliereImg}
                                     alt="Cavaliere"
-                                    style={{
-                                        position: "absolute",
-                                        top: "50%",
-                                        left: "50%",
-                                        transform: "translate(-50%, -50%)",
-                                        maxWidth: "60%",
-                                        maxHeight: "60%",
-                                        objectFit: "contain",
-                                        pointerEvents: "none"
-                                    }}
+                                    style={mapStyles.cellKnight}
                                 />
                             )}
                         </div>
                     );
                 })}
             </div>
-            <button onClick={handleReset} style={{ display: "block", margin: "10px auto", padding: "8px 16px", fontSize: "16px", cursor: "pointer" }}>
+            <button onClick={handleReset} style={mapStyles.resetButton}>
                 Reset Mappa
             </button>
             {modalOpen && (
-                <div style={{
-                    position: "fixed",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: "rgba(0,0,0,0.5)",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    zIndex: 1000
-                }}>
-                    <div style={{
-                        backgroundColor: "white",
-                        padding: 20,
-                        borderRadius: 8,
-                        maxWidth: 300,
-                        width: "80%",
-                        textAlign: "center"
-                    }}>
+                <div style={mapStyles.modalOverlay}>
+                    <div style={mapStyles.modalContent}>
                         <p>Hai partecipato all'incontro {incontri[selectedIndex].numero}: "{incontri[selectedIndex].titolo}"?</p>
-                        <div style={{ display: "flex", justifyContent: "space-around", marginTop: 20 }}>
-                            <button onClick={() => handleModalResponse(true)} style={{ padding: "8px 16px", cursor: "pointer", backgroundColor: "green", color: "white" }}>Sì</button>
-                            <button onClick={() => handleModalResponse(false)} style={{ padding: "8px 16px", cursor: "pointer", backgroundColor: "red", color: "white" }}>No</button>
+                        <div style={mapStyles.modalButtonContainer}>
+                            <button onClick={() => handleModalResponse(false)} style={mapStyles.modalButtonNo}>No</button>
+                            <button onClick={() => handleModalResponse(true)} style={mapStyles.modalButtonYes}>Sì</button>
                         </div>
                     </div>
                 </div>
