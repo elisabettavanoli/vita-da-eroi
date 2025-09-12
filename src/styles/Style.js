@@ -90,6 +90,7 @@ export const commonStyles = {
 export const mapStyles = {
     container: {
         display: "flex",
+        flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
         width: "100%",
@@ -97,13 +98,14 @@ export const mapStyles = {
     },
     board: {
         display: "grid",
-        gridTemplateColumns: "repeat(4, minmax(60px, 1fr))",
-        gridAutoRows: "minmax(60px, 1fr)",
+        gridTemplateColumns: "repeat(4, minmax(70px, 1fr))",
+        gridAutoRows: "minmax(70px, 1fr)",
         maxWidth: "100%",
         gap: "15px",
         justifyContent: "center",
     },
     cell: {
+        aspectRatio: "1/1",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
@@ -116,5 +118,6 @@ export const mapStyles = {
         userSelect: "none",
         transition: "all 0.2s ease",
         textAlign: "center",
+        position: "relative",   // Added to allow absolute positioning of knight image
     },
 };

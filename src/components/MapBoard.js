@@ -92,9 +92,12 @@ export default function MapBoard({ userId, readonly = false }) {
 
     const handleCellClick = async (index) => {
         if (readonly) return;
+        const isFirstMove = cellStatus.every(status => status === null);
         const currentZigzagIndex = zigzagOrder.indexOf(currentPosition);
-        const nextZigzagIndex = currentZigzagIndex + 1;
-        if (nextZigzagIndex < zigzagOrder.length && index === zigzagOrder[nextZigzagIndex]) {
+        const clickedZigzagIndex = zigzagOrder.indexOf(index);
+
+        // Allow click if it's the first move and index is 0, or if it's the next in zigzag order after currentPosition
+        if ((isFirstMove && index === 0) || (clickedZigzagIndex === currentZigzagIndex + 1)) {
             const conferma = window.confirm("Hai partecipato all'incontro?");
             const stato = conferma ? "yes" : "no";
             const newCellStatus = [...cellStatus];
@@ -130,6 +133,8 @@ export default function MapBoard({ userId, readonly = false }) {
     if (loading) return <div>Caricamento...</div>;
     if (errorMessage) return <div>{errorMessage}</div>;
 
+    const isFirstMove = cellStatus.every(status => status === null);
+
     // Board style: make it wider and centered, even for readonly
     const boardStyle = {
         ...mapStyles.board,
@@ -139,6 +144,11 @@ export default function MapBoard({ userId, readonly = false }) {
     };
     return (
         <div style={mapStyles.container}>
+            {isFirstMove && (
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+                    <img src={cavaliereImg} alt="Cavaliere" style={{ maxWidth: "80px", maxHeight: "80px", objectFit: "contain" }} />
+                </div>
+            )}
             <div style={boardStyle}>
                 {incontri.map((incontro, index) => {
                     let backgroundColor;
@@ -153,30 +163,46 @@ export default function MapBoard({ userId, readonly = false }) {
                         backgroundColor = "#FFF8DC";
                         border = "2px solid #654321";
                     }
-                    // If not readonly, highlight current position differently
-                    if (!readonly && cellStatus[index] === null) {
-                        backgroundColor = index === currentPosition ? "#8B4513" : backgroundColor;
-                        border = index === currentPosition ? "3px solid #DAA520" : border;
-                    }
 
                     return (
                         <div
                             key={incontro.id}
-                            style={{ ...mapStyles.cell, backgroundColor, border, display: "flex", justifyContent: "center", alignItems: "center", cursor: readonly ? "default" : "pointer" }}
+                            style={{
+                                ...mapStyles.cell,
+                                backgroundColor,
+                                border,
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                cursor: readonly ? "default" : "pointer",
+                                position: "relative"
+                            }}
                             onClick={() => { if (!readonly) handleCellClick(index); }}
                         >
-                            {!readonly && index === currentPosition ? (
-                                <img src={cavaliereImg} alt="Cavaliere" style={{ maxWidth: "80%", maxHeight: "80%", objectFit: "contain" }} />
-                            ) : (
-                                incontro.numero
+                            {incontro.numero}
+                            {!readonly && !isFirstMove && index === currentPosition && (
+                                <img
+                                    src={cavaliereImg}
+                                    alt="Cavaliere"
+                                    style={{
+                                        position: "absolute",
+                                        top: "50%",
+                                        left: "50%",
+                                        transform: "translate(-50%, -50%)",
+                                        maxWidth: "60%",
+                                        maxHeight: "60%",
+                                        objectFit: "contain",
+                                        pointerEvents: "none"
+                                    }}
+                                />
                             )}
                         </div>
                     );
                 })}
             </div>
-            {/*<button onClick={handleReset} style={{ display: "block", margin: "10px auto", padding: "8px 16px", fontSize: "16px", cursor: "pointer" }}>
+            <button onClick={handleReset} style={{ display: "block", margin: "10px auto", padding: "8px 16px", fontSize: "16px", cursor: "pointer" }}>
                 Reset Mappa
-            </button>*/}
+            </button>
         </div>
     );
 }
