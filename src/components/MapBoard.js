@@ -11,6 +11,8 @@ export default function MapBoard({ userId, readonly = false }) {
     const [cellStatus, setCellStatus] = useState([]);
     const [loading, setLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState(null);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [selectedIndex, setSelectedIndex] = useState(null);
 
     const zigzagOrder = [];
     const totalCells = incontri.length;
@@ -60,20 +62,17 @@ export default function MapBoard({ userId, readonly = false }) {
 
                 setCellStatus(statusArray);
 
-                // Determine currentPosition as the last completed cell (yes or no), or 0 if none
+                // Trova l'ultima cella completata
                 let lastCompletedIndex = -1;
                 for (let i = 0; i < statusArray.length; i++) {
                     if (statusArray[i] === "yes" || statusArray[i] === "no") {
                         lastCompletedIndex = i;
                     }
                 }
-                // Position should be next cell after last completed, or 0 if none completed
-                let newPosition = 0;
-                if (lastCompletedIndex !== -1 && lastCompletedIndex + 1 < incontriList.length) {
-                    newPosition = lastCompletedIndex + 1;
-                } else if (lastCompletedIndex !== -1) {
-                    newPosition = lastCompletedIndex;
-                }
+
+// Se nessuna cella completata, il cavaliere rimane sopra la griglia (isFirstMove)
+                let newPosition = lastCompletedIndex !== -1 ? lastCompletedIndex : 0;
+
                 setCurrentPosition(newPosition);
 
                 setErrorMessage(null);
@@ -90,30 +89,40 @@ export default function MapBoard({ userId, readonly = false }) {
         loadIncontriAndData();
     }, [userId]);
 
-    const handleCellClick = async (index) => {
+    const handleCellClick = (index) => {
         if (readonly) return;
         const isFirstMove = cellStatus.every(status => status === null);
         const currentZigzagIndex = zigzagOrder.indexOf(currentPosition);
         const clickedZigzagIndex = zigzagOrder.indexOf(index);
 
-        // Allow click if it's the first move and index is 0, or if it's the next in zigzag order after currentPosition
+        // Allow click only if it's the next in zigzag order after currentPosition, or first move at index 0
         if ((isFirstMove && index === 0) || (clickedZigzagIndex === currentZigzagIndex + 1)) {
-            const conferma = window.confirm("Hai partecipato all'incontro?");
-            const stato = conferma ? "yes" : "no";
-            const newCellStatus = [...cellStatus];
-            newCellStatus[index] = stato;
-            setCellStatus(newCellStatus);
-            setCurrentPosition(index);
-
-            const nextIncontro = incontri[index];
-            await setDoc(
-                doc(db, "partecipazioni", `${userId}_${nextIncontro.id}`),
-                { userId, incontroId: nextIncontro.id, stato },
-                { merge: true }
-            );
+            setSelectedIndex(index);
+            setModalOpen(true);
         } else {
             alert("Devi seguire l'ordine delle caselle!");
         }
+    };
+
+    const handleModalResponse = async (confirm) => {
+        if (selectedIndex === null) {
+            setModalOpen(false);
+            return;
+        }
+        const stato = confirm ? "yes" : "no";
+        const newCellStatus = [...cellStatus];
+        newCellStatus[selectedIndex] = stato;
+        setCellStatus(newCellStatus);
+        setCurrentPosition(selectedIndex);
+
+        const nextIncontro = incontri[selectedIndex];
+        await setDoc(
+            doc(db, "partecipazioni", `${userId}_${nextIncontro.id}`),
+            { userId, incontroId: nextIncontro.id, stato },
+            { merge: true }
+        );
+        setModalOpen(false);
+        setSelectedIndex(null);
     };
 
     const handleReset = async () => {
@@ -138,13 +147,10 @@ export default function MapBoard({ userId, readonly = false }) {
     // Board style: make it wider and centered, even for readonly
     const boardStyle = {
         ...mapStyles.board,
-        gridTemplateColumns: `repeat(${cols}, minmax(60px, 1fr))`,
-        maxWidth: 400,
-        margin: "0 auto",
     };
     return (
         <div style={mapStyles.container}>
-            {isFirstMove && (
+            {isFirstMove && !readonly && (
                 <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
                     <img src={cavaliereImg} alt="Cavaliere" style={{ maxWidth: "80px", maxHeight: "80px", objectFit: "contain" }} />
                 </div>
@@ -203,6 +209,35 @@ export default function MapBoard({ userId, readonly = false }) {
             <button onClick={handleReset} style={{ display: "block", margin: "10px auto", padding: "8px 16px", fontSize: "16px", cursor: "pointer" }}>
                 Reset Mappa
             </button>
+            {modalOpen && (
+                <div style={{
+                    position: "fixed",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        backgroundColor: "white",
+                        padding: 20,
+                        borderRadius: 8,
+                        maxWidth: 300,
+                        width: "80%",
+                        textAlign: "center"
+                    }}>
+                        <p>Hai partecipato all'incontro {incontri[selectedIndex].numero}: "{incontri[selectedIndex].titolo}"?</p>
+                        <div style={{ display: "flex", justifyContent: "space-around", marginTop: 20 }}>
+                            <button onClick={() => handleModalResponse(true)} style={{ padding: "8px 16px", cursor: "pointer", backgroundColor: "green", color: "white" }}>Sì</button>
+                            <button onClick={() => handleModalResponse(false)} style={{ padding: "8px 16px", cursor: "pointer", backgroundColor: "red", color: "white" }}>No</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

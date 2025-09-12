@@ -18,7 +18,6 @@ const spacing = {
 export const commonStyles = {
     container: {
         width: "90%",
-        maxWidth: 400,
         margin: "50px auto",
         padding: 20,
         borderRadius: 15,
@@ -28,6 +27,10 @@ export const commonStyles = {
         backgroundColor: colors.background,
         fontFamily: "'MedievalSharp', cursive", // font fiabesco, da importare da Google Fonts
         boxShadow: "0 0 10px rgba(0,0,0,0.3)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
     },
     title: {
         fontSize: "2rem",
@@ -38,6 +41,8 @@ export const commonStyles = {
     form: {
         display: "flex",
         flexDirection: "column",
+        alignItems: "center",
+
     },
     input: {
         padding: spacing.medium,
@@ -48,6 +53,8 @@ export const commonStyles = {
         fontFamily: "'Cinzel', serif",
         backgroundColor: "#FFF8DC",
         boxShadow: "inset 0 0 5px rgba(0,0,0,0.1)",
+        width: "100%",
+
     },
     buttonPrimary: {
         padding: spacing.medium,
@@ -61,6 +68,7 @@ export const commonStyles = {
         fontFamily: "'Cinzel', serif",
         boxShadow: "0 3px 6px rgba(0,0,0,0.3)",
         transition: "all 0.2s ease",
+        width: "fit-content",
     },
     buttonPrimaryHover: {
         backgroundColor: colors.secondary,
@@ -98,11 +106,12 @@ export const mapStyles = {
     },
     board: {
         display: "grid",
-        gridTemplateColumns: "repeat(4, minmax(70px, 1fr))",
-        gridAutoRows: "minmax(70px, 1fr)",
+        gridTemplateColumns: "repeat(auto-fit, minmax(70px, 1fr))",
+        gridAutoRows: "minmax(60px, 1fr)",
         maxWidth: "100%",
-        gap: "15px",
+        gap: "12px",
         justifyContent: "center",
+        padding: "12px",
     },
     cell: {
         aspectRatio: "1/1",
@@ -114,10 +123,11 @@ export const mapStyles = {
         fontFamily: "'Cinzel', serif",
         fontWeight: "bold",
         boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
-        fontSize: "1rem",
+        fontSize: "1.2rem",
         userSelect: "none",
         transition: "all 0.2s ease",
         textAlign: "center",
         position: "relative",   // Added to allow absolute positioning of knight image
+
     },
-};
+}
