@@ -1,96 +1,146 @@
 import React, { useState, useEffect } from "react";
 import { mapStyles } from "../styles/Style.js";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "../firebase"; // Assumendo che l'istanza di Firestore sia esportata da qui
+import { collection, getDocs, doc, getDoc, setDoc, query, where, orderBy } from "firebase/firestore";
+import { db } from "../firebase";
+import cavaliereImg from "../assets/cavaliere.png";
 
-export default function MapBoard({ userId }) {
-    const totalCells = 25;
-
+export default function MapBoard({ userId, readonly = false }) {
+    const cols = 4;
+    const [incontri, setIncontri] = useState([]);
     const [currentPosition, setCurrentPosition] = useState(0);
-    const [cellStatus, setCellStatus] = useState(Array(totalCells).fill(null));
+    const [cellStatus, setCellStatus] = useState([]);
     const [loading, setLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState(null);
 
+    const zigzagOrder = [];
+    const totalCells = incontri.length;
+    for (let row = 0; row < Math.ceil(totalCells / cols); row++) {
+        if (row % 2 === 0) {
+            for (let col = 0; col < cols; col++) {
+                const index = row * cols + col;
+                if (index < totalCells) zigzagOrder.push(index);
+            }
+        } else {
+            for (let col = cols - 1; col >= 0; col--) {
+                const index = row * cols + col;
+                if (index < totalCells) zigzagOrder.push(index);
+            }
+        }
+    }
+
     useEffect(() => {
         if (!userId) {
-            setErrorMessage("Nessun utente selezionato. Per favore, effettua il login o seleziona un utente.");
+            setErrorMessage("Nessun utente selezionato.");
             setLoading(false);
             return;
         }
 
-        const loadData = async () => {
+        const loadIncontriAndData = async () => {
+            setLoading(true);
             try {
-                const docRef = doc(db, "spiazzati", userId);
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
+                const q = query(collection(db, "incontri"), orderBy("numero"));
+                const incontriSnapshot = await getDocs(q);
+                const incontriList = incontriSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setIncontri(incontriList);
+
+                // Initialize cellStatus array with nulls
+                let statusArray = Array(incontriList.length).fill(null);
+
+                // Query partecipazioni for the user
+                const partecipazioniQuery = query(collection(db, "partecipazioni"), where("userId", "==", userId));
+                const partecipazioniSnapshot = await getDocs(partecipazioniQuery);
+
+                partecipazioniSnapshot.forEach(docSnap => {
                     const data = docSnap.data();
-                    setCurrentPosition(typeof data.currentPosition === "number" ? data.currentPosition : 0);
-                    setCellStatus(Array.isArray(data.cellStatus) && data.cellStatus.length === totalCells ? data.cellStatus : Array(totalCells).fill(null));
-                    setErrorMessage(null);
-                } else {
-                    setCurrentPosition(0);
-                    setCellStatus(Array(totalCells).fill(null));
-                    setErrorMessage("Nessun dato trovato per l'utente selezionato.");
+                    const index = incontriList.findIndex(incontro => incontro.id === data.incontroId);
+                    if (index !== -1) {
+                        statusArray[index] = data.stato || null;
+                    }
+                });
+
+                setCellStatus(statusArray);
+
+                // Determine currentPosition as the last completed cell (yes or no), or 0 if none
+                let lastCompletedIndex = -1;
+                for (let i = 0; i < statusArray.length; i++) {
+                    if (statusArray[i] === "yes" || statusArray[i] === "no") {
+                        lastCompletedIndex = i;
+                    }
                 }
-            } catch (error) {
-                console.error("Errore nel caricamento dati Firestore:", error);
+                // Position should be next cell after last completed, or 0 if none completed
+                let newPosition = 0;
+                if (lastCompletedIndex !== -1 && lastCompletedIndex + 1 < incontriList.length) {
+                    newPosition = lastCompletedIndex + 1;
+                } else if (lastCompletedIndex !== -1) {
+                    newPosition = lastCompletedIndex;
+                }
+                setCurrentPosition(newPosition);
+
+                setErrorMessage(null);
+            } catch (err) {
+                console.error(err);
+                setCellStatus([]);
                 setCurrentPosition(0);
-                setCellStatus(Array(totalCells).fill(null));
-                setErrorMessage("Errore durante il caricamento dei dati. Riprova più tardi.");
+                setErrorMessage("Errore durante il caricamento dei dati.");
             } finally {
                 setLoading(false);
             }
         };
 
-        loadData();
+        loadIncontriAndData();
     }, [userId]);
 
-    const saveData = async (newPosition, newCellStatus) => {
-        if (!userId) return;
-        try {
-            const docRef = doc(db, "spiazzati", userId);
-            await setDoc(
-                docRef,
-                {
-                    currentPosition: newPosition,
-                    cellStatus: newCellStatus,
-                },
-                { merge: true }
-            );
-        } catch (error) {
-            console.error("Errore nel salvataggio dati Firestore:", error);
-        }
-    };
-
-    const handleCellClick = (index) => {
-        if (index === currentPosition + 1) {
-            const confirmParticipation = window.confirm("Hai partecipato all'incontro?");
+    const handleCellClick = async (index) => {
+        if (readonly) return;
+        const currentZigzagIndex = zigzagOrder.indexOf(currentPosition);
+        const nextZigzagIndex = currentZigzagIndex + 1;
+        if (nextZigzagIndex < zigzagOrder.length && index === zigzagOrder[nextZigzagIndex]) {
+            const conferma = window.confirm("Hai partecipato all'incontro?");
+            const stato = conferma ? "yes" : "no";
             const newCellStatus = [...cellStatus];
-            if (confirmParticipation) {
-                newCellStatus[index] = "yes";
-            } else {
-                newCellStatus[index] = "no";
-            }
+            newCellStatus[index] = stato;
             setCellStatus(newCellStatus);
             setCurrentPosition(index);
-            saveData(index, newCellStatus);
+
+            const nextIncontro = incontri[index];
+            await setDoc(
+                doc(db, "partecipazioni", `${userId}_${nextIncontro.id}`),
+                { userId, incontroId: nextIncontro.id, stato },
+                { merge: true }
+            );
         } else {
             alert("Devi seguire l'ordine delle caselle!");
         }
     };
 
-    if (loading) {
-        return <div>Caricamento...</div>;
-    }
+    const handleReset = async () => {
+        const resetStatus = Array(cellStatus.length).fill(null);
+        setCellStatus(resetStatus);
+        setCurrentPosition(0);
+        for (let i = 0; i < incontri.length; i++) {
+            const nextIncontro = incontri[i];
+            await setDoc(
+                doc(db, "partecipazioni", `${userId}_${nextIncontro.id}`),
+                { userId, incontroId: nextIncontro.id, stato: null },
+                { merge: true }
+            );
+        }
+    };
 
-    if (errorMessage) {
-        return <div>{errorMessage}</div>;
-    }
+    if (loading) return <div>Caricamento...</div>;
+    if (errorMessage) return <div>{errorMessage}</div>;
 
+    // Board style: make it wider and centered, even for readonly
+    const boardStyle = {
+        ...mapStyles.board,
+        gridTemplateColumns: `repeat(${cols}, minmax(60px, 1fr))`,
+        maxWidth: 400,
+        margin: "0 auto",
+    };
     return (
         <div style={mapStyles.container}>
-            <div style={mapStyles.board}>
-                {Array.from({ length: totalCells }).map((_, index) => {
+            <div style={boardStyle}>
+                {incontri.map((incontro, index) => {
                     let backgroundColor;
                     let border;
                     if (cellStatus[index] === "yes") {
@@ -100,28 +150,33 @@ export default function MapBoard({ userId }) {
                         backgroundColor = "#F08080";
                         border = "3px solid red";
                     } else {
-                        backgroundColor = index === currentPosition ? "#8B4513" : "#FFF8DC";
-                        border = index === currentPosition ? "3px solid #DAA520" : "2px solid #654321";
+                        backgroundColor = "#FFF8DC";
+                        border = "2px solid #654321";
                     }
-                    const cols = 4; // numero di colonne
-                    const row = Math.floor(index / cols);
-                    const colInRow = index % cols;
-                    const displayNumber = row % 2 === 0 ? index + 1 : row * cols + (cols - colInRow);
+                    // If not readonly, highlight current position differently
+                    if (!readonly && cellStatus[index] === null) {
+                        backgroundColor = index === currentPosition ? "#8B4513" : backgroundColor;
+                        border = index === currentPosition ? "3px solid #DAA520" : border;
+                    }
+
                     return (
                         <div
-                            key={index}
-                            style={{
-                                ...mapStyles.cell,
-                                backgroundColor,
-                                border,
-                            }}
-                            onClick={() => handleCellClick(index)}
+                            key={incontro.id}
+                            style={{ ...mapStyles.cell, backgroundColor, border, display: "flex", justifyContent: "center", alignItems: "center", cursor: readonly ? "default" : "pointer" }}
+                            onClick={() => { if (!readonly) handleCellClick(index); }}
                         >
-                            {displayNumber}
+                            {!readonly && index === currentPosition ? (
+                                <img src={cavaliereImg} alt="Cavaliere" style={{ maxWidth: "80%", maxHeight: "80%", objectFit: "contain" }} />
+                            ) : (
+                                incontro.numero
+                            )}
                         </div>
                     );
                 })}
             </div>
+            {/*<button onClick={handleReset} style={{ display: "block", margin: "10px auto", padding: "8px 16px", fontSize: "16px", cursor: "pointer" }}>
+                Reset Mappa
+            </button>*/}
         </div>
     );
 }
