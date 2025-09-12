@@ -152,7 +152,7 @@ export default function MapBoard({ userId, readonly = false }) {
         <div style={mapStyles.container}>
             {isFirstMove && !readonly && (
                 <div style={mapStyles.knightAboveContainer}>
-                    <img src={cavaliereImg} alt="Cavaliere" style={mapStyles.cellKnight} />
+                    <img src={cavaliereImg} alt="Cavaliere" style={mapStyles.aboveKnight}  />
                 </div>
             )}
             <div style={boardStyle}>
@@ -177,11 +177,6 @@ export default function MapBoard({ userId, readonly = false }) {
                                 ...mapStyles.cell,
                                 backgroundColor,
                                 border,
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                                cursor: readonly ? "default" : "pointer",
-                                position: "relative"
                             }}
                             onClick={() => { if (!readonly) handleCellClick(index); }}
                         >

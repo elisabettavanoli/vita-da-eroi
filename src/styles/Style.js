@@ -243,4 +243,9 @@ export const mapStyles = {
         pointerEvents: "none",
         userSelect: "none",
     },
+
+    aboveKnight: {
+        width: "40%",
+        height: "40%",
+    }
 }
