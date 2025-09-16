@@ -92,16 +92,25 @@ export default function MapBoard({ userId, readonly = false }) {
 
     const handleCellClick = (index) => {
         if (readonly) return;
-        const isFirstMove = cellStatus.every(status => status === null);
-        const currentZigzagIndex = zigzagOrder.indexOf(currentPosition);
-        const clickedZigzagIndex = zigzagOrder.indexOf(index);
 
-        // Allow click only if it's the next in zigzag order after currentPosition, or first move at index 0
-        if ((isFirstMove && index === 0) || (clickedZigzagIndex === currentZigzagIndex + 1)) {
+        const isFirstMove = cellStatus.every(status => status === null);
+
+        // Trova l'indice della cella più alta completata (cella del cavaliere)
+        const lastCompletedIndex = Math.max(...cellStatus.map((s, i) => (s === "yes" || s === "no" ? i : -1)));
+
+        const cellAlreadyCompleted = cellStatus[index] === "yes" || cellStatus[index] === "no";
+
+        // La prossima cella cliccabile è quella subito dopo il cavaliere, o qualsiasi cella già completata
+        const nextClickableIndex = lastCompletedIndex + 1;
+
+        if (isFirstMove && index === 0) {
+            setSelectedIndex(index);
+            setModalOpen(true);
+        } else if (index === nextClickableIndex || cellAlreadyCompleted) {
             setSelectedIndex(index);
             setModalOpen(true);
         } else {
-            alert("Devi seguire l'ordine delle caselle!");
+            alert("Devi cliccare la prossima cella disponibile dopo il cavaliere!");
         }
     };
 
@@ -176,6 +185,8 @@ export default function MapBoard({ userId, readonly = false }) {
                         border = "2px solid #654321";
                     }
 
+                    const showKnight = !readonly && !isFirstMove && index === Math.max(...cellStatus.map((s, i) => (s === "yes" || s === "no" ? i : -1)));
+
                     return (
                         <div
                             key={incontro.id}
@@ -187,7 +198,7 @@ export default function MapBoard({ userId, readonly = false }) {
                             onClick={() => { if (!readonly) handleCellClick(index); }}
                         >
                             {incontro.numero}
-                            {!readonly && !isFirstMove && index === currentPosition && (
+                            {showKnight && (
                                 <img
                                     src={cavaliereImg}
                                     alt="Cavaliere"
