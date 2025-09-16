@@ -35,7 +35,9 @@ export default function HomeScreen() {
 
     return (
         <div style={styles.container}>
-            <h1 style={styles.title}>Benvenuto, {user?.nome}!</h1>
+            <h1 style={styles.title}>
+                {user?.sesso === "F" ? "Benvenuta" : "Benvenuto"}, {user?.nome}!
+            </h1>
             {user?.ruolo === "educato" && (
                 <MapBoard userId={user?.id} />
             )}
@@ -43,11 +45,14 @@ export default function HomeScreen() {
                 <>
                     <select onChange={handleSelectChange} value={selectedUserId || ""} style={{ marginBottom: 20, padding: 8, fontSize: 16 }}>
                         <option value="" disabled>Seleziona un ragazzo</option>
-                        {spiazzati.filter(ragazzo => ragazzo.ruolo === "educato").map((ragazzo) => (
-                            <option key={ragazzo.id} value={ragazzo.id}>
-                                {ragazzo.nome} {ragazzo.cognome}
-                            </option>
-                        ))}
+                        {spiazzati
+                            .filter(ragazzo => ragazzo.ruolo === "educato")
+                            .sort((a, b) => a.nome.localeCompare(b.nome))
+                            .map((ragazzo) => (
+                                <option key={ragazzo.id} value={ragazzo.id}>
+                                    {ragazzo.nome} {ragazzo.cognome}
+                                </option>
+                            ))}
                     </select>
                     {selectedUserId && <MapBoard userId={selectedUserId} readonly={true} />}
                 </>

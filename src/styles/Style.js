@@ -110,12 +110,12 @@ export const mapStyles = {
     },
     board: {
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(70px, 1fr))",
-        gridAutoRows: "minmax(60px, 1fr)",
-        maxWidth: "100%",
+        gridTemplateColumns: "repeat(auto-fit, minmax(50px, 1fr))",
+        gridAutoRows: "minmax(40px, 1fr)",
+        maxWidth: "90%",
         gap: "12px",
         justifyContent: "center",
-        padding: "12px",
+        padding: "30px",
     },
     cell: {
         aspectRatio: "1/1",

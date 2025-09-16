@@ -3,6 +3,7 @@ import { mapStyles } from "../styles/Style.js";
 import { collection, getDocs, doc, getDoc, setDoc, query, where, orderBy } from "firebase/firestore";
 import { db } from "../firebase";
 import cavaliereImg from "../assets/cavaliere.png";
+import mapImg from "../assets/map-Photoroom.png";
 
 export default function MapBoard({ userId, readonly = false }) {
     const cols = 4;
@@ -147,6 +148,11 @@ export default function MapBoard({ userId, readonly = false }) {
     // Board style: make it wider and centered, even for readonly
     const boardStyle = {
         ...mapStyles.board,
+        backgroundImage: `url(${mapImg})`,
+        backgroundSize: "100% auto",
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "center",
+        width: "100%",
     };
     return (
         <div style={mapStyles.container}>
