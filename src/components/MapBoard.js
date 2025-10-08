@@ -1,228 +1,185 @@
 import React, { useState, useEffect } from "react";
-import { mapStyles } from "../styles/Style.js";
-import { collection, getDocs, doc, getDoc, setDoc, query, where, orderBy } from "firebase/firestore";
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
+import { collection, getDocs, query, orderBy, where, doc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import cavaliereImg from "../assets/cavaliere.png";
-import mapImg from "../assets/map-Photoroom.png";
+import mapImg from "../assets/map.jpg";
 
 export default function MapBoard({ userId, readonly = false }) {
-    const cols = 4;
     const [incontri, setIncontri] = useState([]);
-    const [currentPosition, setCurrentPosition] = useState(0);
     const [cellStatus, setCellStatus] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [errorMessage, setErrorMessage] = useState(null);
-    const [modalOpen, setModalOpen] = useState(false);
-    const [selectedIndex, setSelectedIndex] = useState(null);
+    const [mapSize, setMapSize] = useState({ width: 0, height: 0 });
 
-    const zigzagOrder = [];
-    const totalCells = incontri.length;
-    for (let row = 0; row < Math.ceil(totalCells / cols); row++) {
-        if (row % 2 === 0) {
-            for (let col = 0; col < cols; col++) {
-                const index = row * cols + col;
-                if (index < totalCells) zigzagOrder.push(index);
-            }
-        } else {
-            for (let col = cols - 1; col >= 0; col--) {
-                const index = row * cols + col;
-                if (index < totalCells) zigzagOrder.push(index);
-            }
-        }
-    }
+    // Carica dimensione immagine
+    useEffect(() => {
+        const img = new Image();
+        img.src = mapImg;
+        img.onload = () => setMapSize({ width: img.width, height: img.height });
+    }, []);
 
     useEffect(() => {
-        if (!userId) {
-            setErrorMessage("Nessun utente selezionato.");
-            setLoading(false);
-            return;
-        }
-
-        const loadIncontriAndData = async () => {
+        const loadData = async () => {
             setLoading(true);
             try {
                 const q = query(collection(db, "incontri"), orderBy("numero"));
-                const incontriSnapshot = await getDocs(q);
-                const incontriList = incontriSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const snapshot = await getDocs(q);
+                const incontriList = snapshot.docs.map((doc) => ({
+                    id: doc.id,
+                    ...doc.data(),
+                }));
                 setIncontri(incontriList);
 
-                // Initialize cellStatus array with nulls
-                let statusArray = Array(incontriList.length).fill(null);
-
-                // Query partecipazioni for the user
-                const partecipazioniQuery = query(collection(db, "partecipazioni"), where("userId", "==", userId));
-                const partecipazioniSnapshot = await getDocs(partecipazioniQuery);
-
-                partecipazioniSnapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    const index = incontriList.findIndex(incontro => incontro.id === data.incontroId);
-                    if (index !== -1) {
-                        statusArray[index] = data.stato || null;
-                    }
+                const partecipazioniQuery = query(
+                    collection(db, "partecipazioni"),
+                    where("userId", "==", userId)
+                );
+                const snapshotPartecipazioni = await getDocs(partecipazioniQuery);
+                const statusArray = incontriList.map((inc) => {
+                    const p = snapshotPartecipazioni.docs.find(
+                        (d) => d.data().incontroId === inc.id
+                    );
+                    return p ? p.data().stato : null;
                 });
-
                 setCellStatus(statusArray);
-
-                // Trova l'ultima cella completata
-                let lastCompletedIndex = -1;
-                for (let i = 0; i < statusArray.length; i++) {
-                    if (statusArray[i] === "yes" || statusArray[i] === "no") {
-                        lastCompletedIndex = i;
-                    }
-                }
-
-// Se nessuna cella completata, il cavaliere rimane sopra la griglia (isFirstMove)
-                let newPosition = lastCompletedIndex !== -1 ? lastCompletedIndex : 0;
-
-                setCurrentPosition(newPosition);
-
-                setErrorMessage(null);
             } catch (err) {
                 console.error(err);
-                setCellStatus([]);
-                setCurrentPosition(0);
-                setErrorMessage("Errore durante il caricamento dei dati.");
             } finally {
                 setLoading(false);
             }
         };
-
-        loadIncontriAndData();
+        if (userId) loadData();
     }, [userId]);
+
+    if (loading || mapSize.width === 0) return <div>Caricamento mappa...</div>;
+
+    const lastCompletedIndex = Math.max(
+        ...cellStatus.map((s, i) => (s === "yes" || s === "no" ? i : -1))
+    );
+    const nextIndex = lastCompletedIndex + 1;
 
     const handleCellClick = (index) => {
         if (readonly) return;
+        if (index !== nextIndex)
+            return alert("Devi cliccare la prossima cella disponibile!");
 
-        const isFirstMove = cellStatus.every(status => status === null);
+        const stato = window.confirm("Hai partecipato a questo incontro?")
+            ? "yes"
+            : "no";
 
-        // Trova l'indice della cella più alta completata (cella del cavaliere)
-        const lastCompletedIndex = Math.max(...cellStatus.map((s, i) => (s === "yes" || s === "no" ? i : -1)));
+        const newStatus = [...cellStatus];
+        newStatus[index] = stato;
+        setCellStatus(newStatus);
 
-        const cellAlreadyCompleted = cellStatus[index] === "yes" || cellStatus[index] === "no";
-
-        // La prossima cella cliccabile è quella subito dopo il cavaliere, o qualsiasi cella già completata
-        const nextClickableIndex = lastCompletedIndex + 1;
-
-        if (isFirstMove && index === 0) {
-            setSelectedIndex(index);
-            setModalOpen(true);
-        } else if (index === nextClickableIndex || cellAlreadyCompleted) {
-            setSelectedIndex(index);
-            setModalOpen(true);
-        } else {
-            alert("Devi cliccare la prossima cella disponibile dopo il cavaliere!");
-        }
-    };
-
-    const handleModalResponse = async (confirm) => {
-        if (selectedIndex === null) {
-            setModalOpen(false);
-            return;
-        }
-        const stato = confirm ? "yes" : "no";
-        const newCellStatus = [...cellStatus];
-        newCellStatus[selectedIndex] = stato;
-        setCellStatus(newCellStatus);
-        setCurrentPosition(selectedIndex);
-
-        const nextIncontro = incontri[selectedIndex];
-        await setDoc(
+        const nextIncontro = incontri[index];
+        setDoc(
             doc(db, "partecipazioni", `${userId}_${nextIncontro.id}`),
             { userId, incontroId: nextIncontro.id, stato },
             { merge: true }
         );
-        setModalOpen(false);
-        setSelectedIndex(null);
     };
 
-    const handleReset = async () => {
-        const resetStatus = Array(cellStatus.length).fill(null);
-        setCellStatus(resetStatus);
-        setCurrentPosition(0);
-        for (let i = 0; i < incontri.length; i++) {
-            const nextIncontro = incontri[i];
-            await setDoc(
-                doc(db, "partecipazioni", `${userId}_${nextIncontro.id}`),
-                { userId, incontroId: nextIncontro.id, stato: null },
-                { merge: true }
-            );
-        }
-    };
-
-    if (loading) return <div>Caricamento...</div>;
-    if (errorMessage) return <div>{errorMessage}</div>;
-
-    const isFirstMove = cellStatus.every(status => status === null);
-
-    // Board style: make it wider and centered, even for readonly
-    const boardStyle = {
-        ...mapStyles.board,
-        backgroundImage: `url(${mapImg})`,
-        backgroundSize: "100% auto",
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "center",
-        width: "100%",
-    };
     return (
-        <div style={mapStyles.container}>
-            {isFirstMove && !readonly && (
-                <div style={mapStyles.knightAboveContainer}>
-                    <img src={cavaliereImg} alt="Cavaliere" style={mapStyles.aboveKnight}  />
-                </div>
-            )}
-            <div style={boardStyle}>
-                {incontri.map((incontro, index) => {
-                    let backgroundColor;
-                    let border;
-                    if (cellStatus[index] === "yes") {
-                        backgroundColor = "#90EE90";
-                        border = "3px solid green";
-                    } else if (cellStatus[index] === "no") {
-                        backgroundColor = "#F08080";
-                        border = "3px solid red";
-                    } else {
-                        backgroundColor = "#FFF8DC";
-                        border = "2px solid #654321";
-                    }
+        <div
+            style={{
+                width: "100%",
+                height: "70vh",
+                border: "2px solid #ccc",
+                overflow: "hidden",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                backgroundColor: "#f8f8f8",
+            }}
+        >
+            <TransformWrapper
+                initialScale={1}
+                minScale={0.5}
+                maxScale={3}
+                wheel={{ step: 50 }}
+                pan={{ velocity: true }}
+                centerOnInit
+                limitToBounds={true} // blocca pan oltre i bordi
+                centerContent={true} // centra la mappa inizialmente
+            >
+                <TransformComponent>
+                    <div
+                        style={{
+                            position: "relative",
+                            width: `${mapSize.width}px`,
+                            height: `${mapSize.height}px`,
+                        }}
+                    >
+                        <img
+                            src={mapImg}
+                            alt="Mappa"
+                            style={{ width: "100%", height: "100%", display: "block" }}
+                        />
 
-                    const showKnight = !readonly && !isFirstMove && index === Math.max(...cellStatus.map((s, i) => (s === "yes" || s === "no" ? i : -1)));
+                        {incontri.map((incontro, index) => {
+                            if (!incontro.posizione) return null;
 
-                    return (
-                        <div
-                            key={incontro.id}
-                            style={{
-                                ...mapStyles.cell,
-                                backgroundColor,
-                                border,
-                            }}
-                            onClick={() => { if (!readonly) handleCellClick(index); }}
-                        >
-                            {incontro.numero}
-                            {showKnight && (
-                                <img
-                                    src={cavaliereImg}
-                                    alt="Cavaliere"
-                                    style={mapStyles.cellKnight}
-                                />
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
-            <button onClick={handleReset} style={mapStyles.resetButton}>
-                Reset Mappa
-            </button>
-            {modalOpen && (
-                <div style={mapStyles.modalOverlay}>
-                    <div style={mapStyles.modalContent}>
-                        <p>Hai partecipato all'incontro {incontri[selectedIndex].numero}: "{incontri[selectedIndex].titolo}"?</p>
-                        <div style={mapStyles.modalButtonContainer}>
-                            <button onClick={() => handleModalResponse(false)} style={mapStyles.modalButtonNo}>No</button>
-                            <button onClick={() => handleModalResponse(true)} style={mapStyles.modalButtonYes}>Sì</button>
-                        </div>
+                            const x = incontro.posizione.x;
+                            const y = incontro.posizione.y;
+
+                            const stato = cellStatus[index];
+                            let bgColor = "#d3d3d3"; // neutro
+                            if (stato === "yes") bgColor = "#4caf50";
+                            else if (stato === "no") bgColor = "#f44336";
+
+                            const isCurrent = index === nextIndex;
+
+                            return (
+                                <div
+                                    key={incontro.id}
+                                    onClick={() => handleCellClick(index)}
+                                    title={incontro.titolo}
+                                    style={{
+                                        position: "absolute",
+                                        left: `${x}%`,
+                                        top: `${y}%`,
+                                        width: "60px",
+                                        height: "60px",
+                                        borderRadius: "50%",
+                                        backgroundColor: bgColor,
+                                        boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
+                                        display: "flex",
+                                        justifyContent: "center",
+                                        alignItems: "center",
+                                        fontWeight: "bold",
+                                        fontSize: "14px",
+                                        userSelect: "none",
+                                        transform: isCurrent
+                                            ? "translate(-50%, -50%) scale(1.1)"
+                                            : "translate(-50%, -50%)",
+                                        border: isCurrent ? "3px solid #ffd700" : "3px solid transparent",
+                                        boxSizing: "border-box",
+                                        cursor: index === nextIndex && !readonly ? "pointer" : "default",
+                                        transition: "transform 0.2s ease, border 0.2s ease",
+                                    }}
+                                >
+                                    {isCurrent && (
+                                        <img
+                                            src={cavaliereImg}
+                                            alt={incontro.titolo}
+                                            style={{
+                                                position: "absolute",
+                                                top: "50%",
+                                                left: "50%",
+                                                width: "40px",
+                                                height: "40px",
+                                                transform: "translate(-50%, -50%)",
+                                                pointerEvents: "none",
+                                            }}
+                                        />
+                                    )}
+                                    <span style={{ zIndex: 1 }}>{index + 1}</span>
+                                </div>
+                            );
+                        })}
                     </div>
-                </div>
-            )}
+                </TransformComponent>
+            </TransformWrapper>
         </div>
     );
 }
