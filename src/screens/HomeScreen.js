@@ -1,7 +1,6 @@
-// src/screens/HomeScreen.js
-import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom"; // ⚠ Import mancanti
-import { commonStyles as styles } from "../styles/Style.js";   // ⚠ Assicurati che il nome del file sia styles.js
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { commonStyles as styles } from "../styles/Style.js";
 import MapBoard from "../components/MapBoard";
 import { collection, getDocs, getFirestore } from "firebase/firestore";
 
@@ -9,10 +8,9 @@ export default function HomeScreen() {
     const navigate = useNavigate();
     const location = useLocation();
     const user = location.state?.user;
-    console.log("User data:", user);
-
     const [spiazzati, setSpiazzati] = useState([]);
     const [selectedUserId, setSelectedUserId] = useState(null);
+    const mapContainerRef = useRef(null);
 
     useEffect(() => {
         if (user?.ruolo === "educatore") {
@@ -28,35 +26,56 @@ export default function HomeScreen() {
     }, [user]);
 
     const handleLogout = () => navigate("/");
-
-    const handleSelectChange = (e) => {
-        setSelectedUserId(e.target.value);
-    };
+    const handleSelectChange = (e) => setSelectedUserId(e.target.value);
 
     return (
         <div style={styles.container}>
             <h1 style={styles.title}>
                 {user?.sesso === "F" ? "Benvenuta" : "Benvenuto"}, {user?.nome}!
             </h1>
-            {user?.ruolo === "educato" && (
-                <MapBoard userId={user?.id} />
-            )}
-            {user?.ruolo === "educatore" && (
-                <>
-                    <select onChange={handleSelectChange} value={selectedUserId || ""} style={{ marginBottom: 20, padding: 8, fontSize: 16 }}>
-                        <option value="" disabled>Seleziona un ragazzo</option>
-                        {spiazzati
-                            .filter(ragazzo => ragazzo.ruolo === "educato")
-                            .sort((a, b) => a.nome.localeCompare(b.nome))
-                            .map((ragazzo) => (
-                                <option key={ragazzo.id} value={ragazzo.id}>
-                                    {ragazzo.nome} {ragazzo.cognome}
-                                </option>
-                            ))}
-                    </select>
-                    {selectedUserId && <MapBoard userId={selectedUserId} readonly={true} />}
-                </>
-            )}
+
+            {/* Contenitore con altezza esplicita */}
+            <div
+                ref={mapContainerRef}
+                style={{
+                    width: "100%",
+                    maxWidth: 600,
+                    aspectRatio: "3 / 4",
+                    height: "fit-content",
+                    margin: "0 auto",
+                }}
+            >
+                {user?.ruolo === "educato" && (
+                    <MapBoard userId={user?.id} containerRef={mapContainerRef} />
+                )}
+                {user?.ruolo === "educatore" && (
+                    <>
+                        <select
+                            onChange={handleSelectChange}
+                            value={selectedUserId || ""}
+                            style={{ marginBottom: 20, padding: 8, fontSize: 16 }}
+                        >
+                            <option value="" disabled>Seleziona un ragazzo</option>
+                            {spiazzati
+                                .filter(r => r.ruolo === "educato")
+                                .sort((a, b) => a.nome.localeCompare(b.nome))
+                                .map((r) => (
+                                    <option key={r.id} value={r.id}>
+                                        {r.nome} {r.cognome}
+                                    </option>
+                                ))}
+                        </select>
+                        {selectedUserId && (
+                            <MapBoard
+                                userId={selectedUserId}
+                                readonly={true}
+                                containerRef={mapContainerRef}
+                            />
+                        )}
+                    </>
+                )}
+            </div>
+
             <button onClick={handleLogout} style={styles.buttonPrimary}>Logout</button>
         </div>
     );

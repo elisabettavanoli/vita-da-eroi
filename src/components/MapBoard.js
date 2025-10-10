@@ -1,23 +1,52 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { collection, getDocs, query, orderBy, where, doc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import cavaliereImg from "../assets/cavaliere.png";
 import mapImg from "../assets/map.jpg";
 
-export default function MapBoard({ userId, readonly = false }) {
+export default function MapBoard({ userId, readonly = false, containerRef }) {
     const [incontri, setIncontri] = useState([]);
     const [cellStatus, setCellStatus] = useState([]);
     const [loading, setLoading] = useState(true);
     const [mapSize, setMapSize] = useState({ width: 0, height: 0 });
+    const [initialScale, setInitialScale] = useState(1);
+    const [ready, setReady] = useState(false);
 
-    // Carica dimensione immagine
+    const transformWrapperRef = useRef(null); // ✅ aggiungi questo
+
+    // ... resto del codice
+
+    // 🔹 Carica dimensione immagine
     useEffect(() => {
         const img = new Image();
         img.src = mapImg;
         img.onload = () => setMapSize({ width: img.width, height: img.height });
     }, []);
 
+    // 🔹 Calcola scala iniziale in base al container passato da HomeScreen
+    useEffect(() => {
+        const calcScale = () => {
+            if (mapSize.width && mapSize.height && containerRef?.current) {
+                const containerWidth = containerRef.current.clientWidth;
+                const containerHeight = containerRef.current.clientHeight;
+                const scaleX = containerWidth / mapSize.width;
+                const scaleY = containerHeight / mapSize.height;
+                const scale = Math.max(scaleX, scaleY) * 1.05;
+                setInitialScale(scale);
+                setReady(true);
+            }
+        };
+
+        // Esegui il calcolo una volta che tutto è pronto
+        setTimeout(calcScale, 100);
+
+        // Aggiorna in caso di resize
+        window.addEventListener("resize", calcScale);
+        return () => window.removeEventListener("resize", calcScale);
+    }, [mapSize, containerRef]);
+
+    // 🔹 Carica incontri e stati dell’utente
     useEffect(() => {
         const loadData = async () => {
             setLoading(true);
@@ -48,16 +77,19 @@ export default function MapBoard({ userId, readonly = false }) {
                 setLoading(false);
             }
         };
+
         if (userId) loadData();
     }, [userId]);
 
-    if (loading || mapSize.width === 0) return <div>Caricamento mappa...</div>;
+    if (loading || !ready) return <div>Caricamento mappa...</div>;
 
+    // 🔹 Determina la prossima cella da sbloccare
     const lastCompletedIndex = Math.max(
         ...cellStatus.map((s, i) => (s === "yes" || s === "no" ? i : -1))
     );
     const nextIndex = lastCompletedIndex + 1;
 
+    // 🔹 Gestione click cella
     const handleCellClick = (index) => {
         if (readonly) return;
         if (index !== nextIndex)
@@ -79,28 +111,29 @@ export default function MapBoard({ userId, readonly = false }) {
         );
     };
 
+    // 🔹 Render mappa
     return (
         <div
             style={{
                 width: "100%",
-                height: "70vh",
+                height: "100%",
                 border: "2px solid #ccc",
                 overflow: "hidden",
+                backgroundColor: "#f8f8f8",
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
-                backgroundColor: "#f8f8f8",
             }}
         >
             <TransformWrapper
-                initialScale={1}
-                minScale={0.5}
+                initialScale={initialScale}
+                minScale={initialScale * 0.9}
                 maxScale={3}
+                centerOnInit
+                limitToBounds={true} // prevent white borders
                 wheel={{ step: 50 }}
                 pan={{ velocity: true }}
-                centerOnInit
-                limitToBounds={true} // blocca pan oltre i bordi
-                centerContent={true} // centra la mappa inizialmente
+                ref={transformWrapperRef} // crea ref con useRef()
             >
                 <TransformComponent>
                     <div
@@ -118,12 +151,10 @@ export default function MapBoard({ userId, readonly = false }) {
 
                         {incontri.map((incontro, index) => {
                             if (!incontro.posizione) return null;
-
-                            const x = incontro.posizione.x;
-                            const y = incontro.posizione.y;
-
+                            const { x, y } = incontro.posizione;
                             const stato = cellStatus[index];
-                            let bgColor = "#d3d3d3"; // neutro
+
+                            let bgColor = "#d3d3d3";
                             if (stato === "yes") bgColor = "#4caf50";
                             else if (stato === "no") bgColor = "#f44336";
 
@@ -152,9 +183,14 @@ export default function MapBoard({ userId, readonly = false }) {
                                         transform: isCurrent
                                             ? "translate(-50%, -50%) scale(1.1)"
                                             : "translate(-50%, -50%)",
-                                        border: isCurrent ? "3px solid #ffd700" : "3px solid transparent",
+                                        border: isCurrent
+                                            ? "3px solid #ffd700"
+                                            : "3px solid transparent",
                                         boxSizing: "border-box",
-                                        cursor: index === nextIndex && !readonly ? "pointer" : "default",
+                                        cursor:
+                                            index === nextIndex && !readonly
+                                                ? "pointer"
+                                                : "default",
                                         transition: "transform 0.2s ease, border 0.2s ease",
                                     }}
                                 >
