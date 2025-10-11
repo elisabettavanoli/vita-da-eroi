@@ -3,7 +3,7 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { collection, getDocs, query, orderBy, where, doc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import cavaliereImg from "../assets/cavaliere.png";
-import mapImg from "../assets/map.jpg";
+import mapImg from "../assets/infinityMap.png";
 
 export default function MapBoard({ userId, readonly = false, containerRef }) {
     const [incontri, setIncontri] = useState([]);
@@ -119,7 +119,7 @@ export default function MapBoard({ userId, readonly = false, containerRef }) {
                 height: "100%",
                 border: "2px solid #ccc",
                 overflow: "hidden",
-                backgroundColor: "#f8f8f8",
+                backgroundColor: "#E8DBC6",
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
@@ -127,10 +127,10 @@ export default function MapBoard({ userId, readonly = false, containerRef }) {
         >
             <TransformWrapper
                 initialScale={initialScale}
-                minScale={initialScale * 0.9}
+                minScale={initialScale * 0.5}
                 maxScale={3}
                 centerOnInit
-                limitToBounds={true} // prevent white borders
+                limitToBounds={false} // prevent white borders
                 wheel={{ step: 50 }}
                 pan={{ velocity: true }}
                 ref={transformWrapperRef} // crea ref con useRef()
