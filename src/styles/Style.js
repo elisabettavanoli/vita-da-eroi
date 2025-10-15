@@ -19,7 +19,7 @@ const spacing = {
 export const commonStyles = {
     container: {
         width: "90%",
-        margin: "50px auto",
+        margin: "5vh auto",
         padding: 20,
         borderRadius: 15,
         border: `2px solid ${colors.border}`,
@@ -32,6 +32,7 @@ export const commonStyles = {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
+        height: "90vh",
     },
     title: {
         fontSize: "2rem",
