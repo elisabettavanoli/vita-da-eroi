@@ -111,6 +111,22 @@ export default function MapBoard({ userId, readonly = false, containerRef }) {
         );
     };
 
+    // 🔹 Funzione per ottenere coordinate percentuali al click
+    const handleMapClick = (event) => {
+        // Prendi bounding box dell'immagine
+        const rect = event.currentTarget.getBoundingClientRect();
+
+        // Calcola posizione click relativa all'immagine
+        const xPx = event.clientX - rect.left;
+        const yPx = event.clientY - rect.top;
+
+        // Trasforma in percentuale
+        const xPercent = (xPx / rect.width) * 100;
+        const yPercent = (yPx / rect.height) * 100;
+
+        console.log(`Coordinate percentuali: x=${xPercent.toFixed(2)}%, y=${yPercent.toFixed(2)}%`);
+    };
+
     // 🔹 Render mappa
     return (
         <div
@@ -142,6 +158,7 @@ export default function MapBoard({ userId, readonly = false, containerRef }) {
                             width: `${mapSize.width}px`,
                             height: `${mapSize.height}px`,
                         }}
+                        onClick={handleMapClick}
                     >
                         <img
                             src={mapImg}

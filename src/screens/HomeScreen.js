@@ -38,11 +38,12 @@ export default function HomeScreen() {
             <div
                 ref={mapContainerRef}
                 style={{
-                    width: "100%",
-                    maxWidth: 600,
+                    width: "90%",
                     aspectRatio: "3 / 4",
                     height: "fit-content",
                     margin: "0 auto",
+                    marginBottom: 30,
+
                 }}
             >
                 {user?.ruolo === "educato" && (
