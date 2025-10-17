@@ -47,66 +47,59 @@ export default function HomeScreen() {
         }
 
         setExpandedIncontro(incontroId);
-        setPartecipantiByIncontro(prev => ({ ...prev, [incontroId]: "loading" }));
 
-        // Se abbiamo già caricato i partecipanti, non ricaricare
-        if (partecipantiByIncontro[incontroId]) return;
+        // Mostra subito caricamento se non ci sono dati
+        if (!partecipantiByIncontro[incontroId] || partecipantiByIncontro[incontroId] === "loading") {
+            setPartecipantiByIncontro(prev => ({ ...prev, [incontroId]: "loading" }));
 
-        try {
-            const db = getFirestore();
+            try {
+                const db = getFirestore();
 
-            // Recupera partecipazioni dell'incontro con stato "yes"
-            const partecipazioniSnap = await getDocs(
-                query(
-                    collection(db, "partecipazioni"),
-                    where("incontroId", "==", incontroId),
-                    where("stato", "==", "yes")
-                )
-            );
-
-            if (partecipazioniSnap.empty) {
-                setPartecipantiByIncontro(prev => ({ ...prev, [incontroId]: [] }));
-                return;
-            }
-
-            // Normalizza i dati e prova a estrarre gli id utente anche se sono stored come DocumentReference
-            const partecipazioni = partecipazioniSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-            const userIdsRaw = partecipazioni.map(p => {
-                // supporta più possibili nomi di campo e DocumentReference
-                const candidate = (p.userId ?? p.userUid ?? p.uid ?? (p.user && (p.user.id || p.user))) || null;
-                if (!candidate) return null;
-                // Se è un DocumentReference estrai .id
-                if (typeof candidate === "object" && candidate.id) return candidate.id;
-                return candidate;
-            });
-
-            // Rimuovi duplicati e falsy
-            const userIds = Array.from(new Set(userIdsRaw.filter(Boolean).map(String)));
-
-            if (!userIds.length) {
-                setPartecipantiByIncontro(prev => ({ ...prev, [incontroId]: [] }));
-                return;
-            }
-
-            // Chunking (firestore 'in' supporta max 10)
-            const usersCollection = collection(db, "spiazzati");
-            const allUsers = [];
-
-            for (let i = 0; i < userIds.length; i += 10) {
-                const chunk = userIds.slice(i, i + 10);
-                const usersSnap = await getDocs(
-                    query(usersCollection, where(documentId(), "in", chunk))
+                const partecipazioniSnap = await getDocs(
+                    query(
+                        collection(db, "partecipazioni"),
+                        where("incontroId", "==", incontroId),
+                        where("stato", "==", "yes")
+                    )
                 );
-                usersSnap.docs.forEach(u => {
-                    allUsers.push({ id: u.id, ...u.data() });
-                });
-            }
 
-            setPartecipantiByIncontro(prev => ({ ...prev, [incontroId]: allUsers }));
-        } catch (error) {
-            console.error("Errore caricamento partecipanti:", error);
-            setPartecipantiByIncontro(prev => ({ ...prev, [incontroId]: [] }));
+                if (partecipazioniSnap.empty) {
+                    setPartecipantiByIncontro(prev => ({ ...prev, [incontroId]: [] }));
+                    return;
+                }
+
+                const partecipazioni = partecipazioniSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                const userIdsRaw = partecipazioni.map(p => {
+                    const candidate = (p.userId ?? p.userUid ?? p.uid ?? (p.user && (p.user.id || p.user))) || null;
+                    if (!candidate) return null;
+                    if (typeof candidate === "object" && candidate.id) return candidate.id;
+                    return candidate;
+                });
+
+                const userIds = Array.from(new Set(userIdsRaw.filter(Boolean).map(String)));
+
+                if (!userIds.length) {
+                    setPartecipantiByIncontro(prev => ({ ...prev, [incontroId]: [] }));
+                    return;
+                }
+
+                const usersCollection = collection(db, "spiazzati");
+                const allUsers = [];
+
+                for (let i = 0; i < userIds.length; i += 10) {
+                    const chunk = userIds.slice(i, i + 10);
+                    const usersSnap = await getDocs(
+                        query(usersCollection, where(documentId(), "in", chunk))
+                    );
+                    usersSnap.docs.forEach(u => allUsers.push({ id: u.id, ...u.data() }));
+                }
+
+                setPartecipantiByIncontro(prev => ({ ...prev, [incontroId]: allUsers }));
+            } catch (error) {
+                console.error("Errore caricamento partecipanti:", error);
+                setPartecipantiByIncontro(prev => ({ ...prev, [incontroId]: [] }));
+            }
         }
     };
 
