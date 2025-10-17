@@ -47,6 +47,7 @@ export default function HomeScreen() {
         }
 
         setExpandedIncontro(incontroId);
+        setPartecipantiByIncontro(prev => ({ ...prev, [incontroId]: "loading" }));
 
         // Se abbiamo già caricato i partecipanti, non ricaricare
         if (partecipantiByIncontro[incontroId]) return;
@@ -54,7 +55,7 @@ export default function HomeScreen() {
         try {
             const db = getFirestore();
 
-            // 1️⃣ Recupera tutte le partecipazioni dell'incontro con stato "yes"
+            // Recupera partecipazioni dell'incontro con stato "yes"
             const partecipazioniSnap = await getDocs(
                 query(
                     collection(db, "partecipazioni"),
@@ -63,24 +64,37 @@ export default function HomeScreen() {
                 )
             );
 
-            const partecipazioni = partecipazioniSnap.docs.map(d => d.data());
-            console.log("Partecipazioni trovate:", partecipazioni);
+            if (partecipazioniSnap.empty) {
+                setPartecipantiByIncontro(prev => ({ ...prev, [incontroId]: [] }));
+                return;
+            }
 
-            const userIds = partecipazioni.map(p => p.userId);
-            console.log("userIds trovati:", userIds);
+            // Normalizza i dati e prova a estrarre gli id utente anche se sono stored come DocumentReference
+            const partecipazioni = partecipazioniSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            const userIdsRaw = partecipazioni.map(p => {
+                // supporta più possibili nomi di campo e DocumentReference
+                const candidate = (p.userId ?? p.userUid ?? p.uid ?? (p.user && (p.user.id || p.user))) || null;
+                if (!candidate) return null;
+                // Se è un DocumentReference estrai .id
+                if (typeof candidate === "object" && candidate.id) return candidate.id;
+                return candidate;
+            });
+
+            // Rimuovi duplicati e falsy
+            const userIds = Array.from(new Set(userIdsRaw.filter(Boolean).map(String)));
 
             if (!userIds.length) {
                 setPartecipantiByIncontro(prev => ({ ...prev, [incontroId]: [] }));
                 return;
             }
 
-            // 2️⃣ Recupera dati utenti corrispondenti con chunking
-            const usersCollection = collection(db, "users");
+            // Chunking (firestore 'in' supporta max 10)
+            const usersCollection = collection(db, "spiazzati");
             const allUsers = [];
 
             for (let i = 0; i < userIds.length; i += 10) {
                 const chunk = userIds.slice(i, i + 10);
-                console.log("Chunk utenti query:", chunk);
                 const usersSnap = await getDocs(
                     query(usersCollection, where(documentId(), "in", chunk))
                 );
@@ -89,11 +103,10 @@ export default function HomeScreen() {
                 });
             }
 
-            console.log("Utenti trovati:", allUsers);
-
             setPartecipantiByIncontro(prev => ({ ...prev, [incontroId]: allUsers }));
         } catch (error) {
             console.error("Errore caricamento partecipanti:", error);
+            setPartecipantiByIncontro(prev => ({ ...prev, [incontroId]: [] }));
         }
     };
 
@@ -102,91 +115,100 @@ export default function HomeScreen() {
             <h1 style={styles.title}>
                 {user?.sesso === "F" ? "Benvenuta" : "Benvenuto"}, {user?.nome}!
             </h1>
+            {user?.ruolo === "educato" && (
+                <div
+                    ref={mapContainerRef}
+                    style={{
+                        width: "90%",
+                        aspectRatio: "3 / 4",
+                        height: "fit-content",
+                        margin: "0 auto",
+                        marginBottom: 30,
 
+                    }}>
+                <MapBoard userId={user?.id} containerRef={mapContainerRef} />
+                </div>
+
+            )}
             {/* Contenitore con altezza esplicita */}
-            <div
-                ref={mapContainerRef}
-                style={{
-                    width: "90%",
-                    aspectRatio: "3 / 4",
-                    height: "fit-content",
-                    margin: "0 auto",
-                    marginBottom: 30,
 
-                }}
-            >
-                {user?.ruolo === "educato" && (
-                    <MapBoard userId={user?.id} containerRef={mapContainerRef} />
-                )}
-                {user?.ruolo === "educatore" && (
+            {user?.ruolo === "educatore" && (
 
-                    <div style={{
+                <div
+                    style={{
                         width: "100%",
+                        maxWidth: "100%",
                         margin: "0 auto",
                         textAlign: "center",
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
-                        paddingRight: "10px",
-                        boxSizing: "border-box", // aggiunto per includere padding e border nel calcolo della larghezza
-                        padding: "10px 20px", // spazio sopra e sotto
-                        overflow: "auto",
-                    }}>
+                        boxSizing: "border-box",
+                        padding: "0px 30px",
+                        overflowY: "auto",
+                        overflowX: "hidden",
+                        marginBottom: 30,
+                    }}
+                >
 
-                        {incontri.length === 0 ? (
-                            <p>Nessun incontro disponibile.</p>
-                        ) : (
-                            incontri.map((incontro) => {
-                                const isExpanded = expandedIncontro === incontro.id;
-                                const partecipanti = partecipantiByIncontro[incontro.id] || [];
-                                return (
+                    {incontri.length === 0 ? (
+                        <p>Nessun incontro disponibile.</p>
+                    ) : (
+                        incontri.map((incontro) => {
+                            const isExpanded = expandedIncontro === incontro.id;
+                            const partecipanti = partecipantiByIncontro[incontro.id] || [];
+                            return (
+                                <div
+                                    key={incontro.id}
+                                    style={{
+                                        backgroundColor: "#f5f0e1",
+                                        border: "2px solid #8b4513",
+                                        borderRadius: "12px",
+                                        padding: "15px",
+                                        fontFamily: "'Old English Text MT', 'Gothic', serif",
+                                        color: "#5a2d0c",
+                                        boxShadow: '2px 2px 6px rgba(0,0,0,0.3)',
+                                        width: "100%",
+                                        maxWidth: 500,
+                                        marginBottom: 10,
+                                        textAlign: "left"
+                                    }}
+                                >
                                     <div
-                                        key={incontro.id}
+                                        onClick={() => togglePartecipanti(incontro.id)}
                                         style={{
-                                            border: "1px solid #ccc",
-                                            borderRadius: 8,
-                                            padding: 12,
-                                            width: "100%",
-                                            maxWidth: 500,
-                                            marginBottom: 10,
-                                            backgroundColor: "#fafafa",
-                                            textAlign: "left"
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            alignItems: "center",
+                                            cursor: "pointer"
                                         }}
                                     >
-                                        <div
-                                            onClick={() => togglePartecipanti(incontro.id)}
-                                            style={{
-                                                display: "flex",
-                                                justifyContent: "space-between",
-                                                alignItems: "center",
-                                                cursor: "pointer"
-                                            }}
-                                        >
-                                            <span style={{ fontFamily: "Arial, sans-serif", fontWeight: "bold", fontSize: 16 }}>
-                                                {incontro.titolo || `Incontro ${incontro.numero || ""}`}
-                                            </span>
-                                            {isExpanded ? <FaChevronDown /> : <FaChevronRight />}
-                                        </div>
-                                        {isExpanded && (
-                                            <div style={{ marginTop: 10, marginLeft: 10 }}>
-                                                {partecipanti.length > 0 ? (
-                                                    <ul style={{ listStyleType: "none", paddingLeft: 0 }}>
-                                                        {partecipanti.map((p) => (
-                                                            <li key={p.id}>• {p.nome} {p.cognome}</li>
-                                                        ))}
-                                                    </ul>
-                                                ) : (
-                                                    <p style={{ fontStyle: "italic" }}>Nessun partecipante registrato.</p>
-                                                )}
-                                            </div>
-                                        )}
+                                        <span style={{ fontFamily: "Arial, sans-serif", fontWeight: "bold", fontSize: 16 }}>
+                                            {incontro.titolo || `Incontro ${incontro.numero || ""}`}
+                                        </span>
+                                        {isExpanded ? <FaChevronDown /> : <FaChevronRight />}
                                     </div>
-                                );
-                            })
-                        )}
-                    </div>
-                )}
-            </div>
+                                    {isExpanded && (
+                                        <div style={{ marginTop: 10, marginLeft: 10 }}>
+                                            {partecipanti === "loading" ? (
+                                                <p style={{ fontStyle: "italic" }}>Caricamento partecipanti...</p>
+                                            ) : partecipanti.length > 0 ? (
+                                                <ul style={{ listStyleType: "none", paddingLeft: 0 }}>
+                                                    {partecipanti.map((p) => (
+                                                        <li key={p.id}>• {p.nome} {p.cognome}</li>
+                                                    ))}
+                                                </ul>
+                                            ) : (
+                                                <p style={{ fontStyle: "italic" }}>Nessun partecipante registrato.</p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+            )}
 
             <button onClick={handleLogout} style={styles.buttonPrimary}>Logout</button>
         </div>
