@@ -15,8 +15,6 @@ export default function MapBoard({ userId, readonly = false, containerRef }) {
     const [initialScale, setInitialScale] = useState(1);
     const [ready, setReady] = useState(false);
     const [modalData, setModalData] = useState(null);
-    // Stato per animazione cavaliere
-    const [isMoving, setIsMoving] = useState(false);
     const prevCavaliereIndexRef = useRef(null);
     const transformWrapperRef = useRef(null);
 
@@ -95,14 +93,8 @@ export default function MapBoard({ userId, readonly = false, containerRef }) {
         ...cellStatus.map((s, i) => (s === "yes" || s === "no" ? i : -1))
     );
 
-    // Gestione stato animazione cavaliere
+    // Aggiorna il riferimento all'indice del cavaliere
     useEffect(() => {
-        // Solo se il cavaliere si è spostato (non al primo render)
-        if (prevCavaliereIndexRef.current !== null && prevCavaliereIndexRef.current !== cavaliereIndex) {
-            setIsMoving(true);
-            const timeout = setTimeout(() => setIsMoving(false), 1200); // durata animazione = 1.2s
-            return () => clearTimeout(timeout);
-        }
         prevCavaliereIndexRef.current = cavaliereIndex;
     }, [cavaliereIndex]);
 
@@ -245,7 +237,7 @@ export default function MapBoard({ userId, readonly = false, containerRef }) {
                                                     height: "18px",
                                                     background: "radial-gradient(ellipse at center, rgba(0,0,0,0.22) 65%, rgba(0,0,0,0.08) 100%)",
                                                     borderRadius: "50%",
-                                                    transform: "translate(-50%, -50%)",
+                                                    transform: "translate(-50%, 50%)",
                                                     zIndex: 0,
                                                     pointerEvents: "none",
                                                     filter: "blur(0.6px)"
@@ -258,40 +250,15 @@ export default function MapBoard({ userId, readonly = false, containerRef }) {
                                                     position: "absolute",
                                                     top: "50%",
                                                     left: "50%",
-                                                    width: "80px",
-                                                    height: "80px",
-                                                    transform: "translate(-50%, -50%)",
+                                                    width: "100px",
+                                                    height: "100px",
+                                                    transform: "translate(-50%, -55%)",
                                                     pointerEvents: "none",
-                                                    boxShadow: "0 10px 24px 0px rgba(0,0,0,0.55)",
-                                                    animation: isMoving
-                                                        ? "cavaliereRearing 1.2s infinite cubic-bezier(.4,0,.6,1)"
-                                                        : "none",
+                                                    //boxShadow: "0 10px 24px 0px rgba(0,0,0,0.55)",
                                                 }}
                                             />
                                         </>
                                     )}
-                                    {/* Animazione cavaliere che impenna */}
-                                    <style>
-                                        {`
-                                        @keyframes cavaliereRearing {
-                                            0% {
-                                                transform: translate(-50%, -50%) rotate(-10deg) scale(1);
-                                            }
-                                            20% {
-                                                transform: translate(-50%, -50%) rotate(-18deg) scale(1.04);
-                                            }
-                                            45% {
-                                                transform: translate(-50%, -50%) rotate(13deg) scale(1.13);
-                                            }
-                                            70% {
-                                                transform: translate(-50%, -50%) rotate(-14deg) scale(1.04);
-                                            }
-                                            100% {
-                                                transform: translate(-50%, -50%) rotate(-10deg) scale(1);
-                                            }
-                                        }
-                                        `}
-                                    </style>
                                     <span style={{ zIndex: 1 }}>{index + 1}</span>
                                 </div>
                             );
